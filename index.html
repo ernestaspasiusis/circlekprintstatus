@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Spausdinamos medžiagos būsena</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <style>
   body{
     font-family:system-ui,sans-serif;
@@ -44,12 +45,12 @@
 <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
 
 <script>
-// Firebase configuration – values taken from your message, with the storage bucket corrected
+// Firebase configuration – your project keys (public for web apps)
 const firebaseConfig = {
   apiKey: "AIzaSyAClo8SsxFrOg88vOzgKmqUjYxXduNVH_U",
   authDomain: "ckprintai.firebaseapp.com",
   projectId: "ckprintai",
-  storageBucket: "ckprintai.appspot.com",   // <-- corrected suffix
+  storageBucket: "ckprintai.appspot.com",
   messagingSenderId: "34677922140",
   appId: "1:34677922140:web:bac80b67c3cbfe71ce0999",
   measurementId: "G-TZVE0S0ELS"
@@ -62,26 +63,33 @@ const rowsRef = db.collection('rows');
 
 const list = document.getElementById('list');
 const addRowBtn = document.getElementById('add-row');
+const rowElems = new Map(); // docId -> DOM element
 
 function updateColor(sel){
   sel.className = '';
   sel.classList.add('status-' + sel.value);
 }
 
-function createRowElement(docId, number, data={}){
-  const row = document.createElement('div');
+function createRowElement(doc){
+  const data = doc.data();
+  const id   = doc.id;
+  const row  = document.createElement('div');
   row.className = 'row';
+  row.dataset.id = id;
 
   const num = document.createElement('span');
   num.className = 'row-number';
-  num.textContent = number;
+  // number is set later after we know ordering
 
   const input = document.createElement('input');
   input.type = 'text';
   input.value = data.text || '';
   input.placeholder = 'Įveskite tekstą...';
-  input.addEventListener('input', () => {
-    rowsRef.doc(docId).update({ text: input.value });
+  // Update only on blur to avoid re‑render focus loss while typing
+  input.addEventListener('blur', () => {
+    if (input.value !== data.text) {
+      rowsRef.doc(id).update({ text: input.value });
+    }
   });
 
   const select = document.createElement('select');
@@ -94,7 +102,7 @@ function createRowElement(docId, number, data={}){
   updateColor(select);
   select.addEventListener('change', () => {
     updateColor(select);
-    rowsRef.doc(docId).update({ status: select.value });
+    rowsRef.doc(id).update({ status: select.value });
   });
 
   row.appendChild(num);
@@ -104,18 +112,60 @@ function createRowElement(docId, number, data={}){
   return row;
 }
 
-// Real‑time listener
+function renumberRows(){
+  Array.from(list.children).forEach((rowEl, idx) => {
+    const span = rowEl.querySelector('.row-number');
+    if (span) span.textContent = idx + 1;
+  });
+}
+
+// Real‑time listener with granular updates to keep input focus intact
 rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
-  list.innerHTML = '';
-  let i = 1;
-  snapshot.forEach(doc => {
-    const rowEl = createRowElement(doc.id, i++, doc.data());
-    list.appendChild(rowEl);
+  snapshot.docChanges().forEach(change => {
+    const doc = change.doc;
+    const id  = doc.id;
+
+    if (change.type === 'added') {
+      const rowEl = createRowElement(doc);
+      rowElems.set(id, rowEl);
+      // Insert in correct position based on index of change.newIndex
+      if (change.newIndex >= list.children.length) {
+        list.appendChild(rowEl);
+      } else {
+        list.insertBefore(rowEl, list.children[change.newIndex]);
+      }
+      renumberRows();
+    }
+
+    if (change.type === 'modified') {
+      const rowEl = rowElems.get(id);
+      if (rowEl) {
+        // Update only display values that are different
+        const input  = rowEl.querySelector('input');
+        const select = rowEl.querySelector('select');
+        if (document.activeElement !== input && input.value !== doc.data().text) {
+          input.value = doc.data().text || '';
+        }
+        if (select.value !== doc.data().status) {
+          select.value = doc.data().status || 'apdorojama';
+          updateColor(select);
+        }
+      }
+    }
+
+    if (change.type === 'removed') {
+      const rowEl = rowElems.get(id);
+      if (rowEl) {
+        rowEl.remove();
+        rowElems.delete(id);
+        renumberRows();
+      }
+    }
   });
 });
 
 // Add new row
-addRowBtn.addEventListener('click', () => {
+aaddRowBtn.addEventListener('click', () => {
   rowsRef.add({
     text: '',
     status: 'apdorojama',
