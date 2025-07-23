@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2025 by anonymous (http://jsbin.com/gitabihale/1/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<title>Spausdinamos medžiagos būsena</title>
+<style>
+  body{
+    font-family:system-ui,sans-serif;
+    margin:0;
+    padding:20px;
+    text-align:center;
+    background:#ffffff;
+  }
+
+  .logo{display:block;margin:0 auto 12px;max-height:80px;object-fit:contain;}
+  .subtitle{font-size:.9rem;color:#6b7280;margin:-4px 0 16px;font-weight:400;}
+
+  #list{max-width:600px;margin:0 auto;text-align:left;}
+  .row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+  .row-number{width:32px;text-align:right;font-weight:bold;}
+  .row input{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:4px;}
+  .row select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;transition:background-color .3s;}
+
+  .status-apdorojama{background:#fb923c;color:#000;}
+  .status-gaminama {background:#fde047;color:#000;}
+  .status-issiusta {background:#facc15;color:#000;}
+  .status-gauta   {background:#4ade80;color:#fff;}
+
+  #add-row{margin-top:12px;padding:8px 12px;border:none;background:#4F46E5;color:#fff;border-radius:4px;cursor:pointer;}
+  #add-row:hover{background:#4338CA;}
+</style>
+</head>
+<body>
+
+<img class="logo" src="https://i.ibb.co/9HcFs71P/logoooo.png" alt="CircleKlogo">
+<h1>Spausdinamos medžiagos būsena</h1>
+<p class="subtitle">CircleKLietuva</p>
+
+<div id="list"></div>
+<button id="add-row">Pridėti eilutę</button>
+
+<!-- Firebase JS SDK (compat build). Replace VERSION with latest (e.g. 12.0.0) -->
+<script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
+
+<script>
+// 1) ĮRAŠYKITE SAVO FIREBASE KONFIGŪRACIJĄ
+const firebaseConfig = {
+  apiKey: "REPLACE_ME",
+  authDomain: "REPLACE_ME.firebaseapp.com",
+  projectId: "REPLACE_ME",
+  storageBucket: "REPLACE_ME.appspot.com",
+  messagingSenderId: "REPLACE_ME",
+  appId: "REPLACE_ME"
+};
+
+// 2) Inicijuojame Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const rowsRef = db.collection('rows');
+
+const list = document.getElementById('list');
+const addRowBtn = document.getElementById('add-row');
+
+function updateColor(sel){
+  sel.className = '';
+  sel.classList.add('status-' + sel.value);
+}
+
+function createRowElement(docId, number, data={}){
+  const row = document.createElement('div');
+  row.className = 'row';
+
+  const num = document.createElement('span');
+  num.className = 'row-number';
+  num.textContent = number;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = data.text || '';
+  input.placeholder = 'Įveskite tekstą...';
+  input.addEventListener('input', () => {
+    rowsRef.doc(docId).update({ text: input.value });
+  });
+
+  const select = document.createElement('select');
+  select.innerHTML =
+    '<option value="apdorojama">Apdorojama</option>'+
+    '<option value="gaminama">Gaminama</option>'+
+    '<option value="issiusta">Išsiųsta</option>'+
+    '<option value="gauta">Gauta</option>';
+  select.value = data.status || 'apdorojama';
+  updateColor(select);
+  select.addEventListener('change', () => {
+    updateColor(select);
+    rowsRef.doc(docId).update({ status: select.value });
+  });
+
+  row.appendChild(num);
+  row.appendChild(input);
+  row.appendChild(select);
+
+  return row;
+}
+
+// 3) Klausomės duomenų pokyčių realiu laiku
+rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
+  list.innerHTML = '';
+  let i = 1;
+  snapshot.forEach(doc => {
+    const rowEl = createRowElement(doc.id, i++, doc.data());
+    list.appendChild(rowEl);
+  });
+});
+
+// 4) Naujos eilutės pridėjimas
+addRowBtn.addEventListener('click', () => {
+  rowsRef.add({
+    text: '',
+    status: 'apdorojama',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+});
+</script>
+</body>
+</html>
