@@ -14,7 +14,8 @@
   }
 
   .logo{display:block;margin:0 auto 12px;max-height:80px;object-fit:contain;}
-  .subtitle{font-size:.9rem;color:#6b7280;margin:-4px 0 16px;font-weight:400;}
+  .subtitle{font-size:.9rem;color:#6b7280;margin:-4px 0 4px;font-weight:400;}
+  .public-note{font-size:.8rem;color:#b91c1c;margin:0 0 16px;}
 
   #list{max-width:600px;margin:0 auto;text-align:left;}
   .row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
@@ -37,6 +38,7 @@
 <img class="logo" src="https://i.ibb.co/9HcFs71P/logoooo.png" alt="Circle K logo">
 <h1>Spausdinamos medžiagos būsena</h1>
 <p class="subtitle">Circle K Lietuva</p>
+<p class="public-note">⚠︎ Ši lentelė redaguojama viešai – visi, turintys šią nuorodą, gali keisti ar trinti duomenis.</p>
 
 <div id="list"></div>
 <button id="add-row">Pridėti eilutę</button>
@@ -91,13 +93,11 @@ function createRowElement(doc){
 
   const num = document.createElement('span');
   num.className = 'row-number';
-  // number is set later after we know ordering
 
   const input = document.createElement('input');
   input.type = 'text';
   input.value = data.text || '';
   input.placeholder = 'Įveskite tekstą...';
-  // Update only on blur to avoid re‑render focus loss while typing
   input.addEventListener('blur', () => {
     if (input.value !== data.text) {
       rowsRef.doc(id).update({ text: input.value });
@@ -139,11 +139,9 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
     const id  = doc.id;
 
     if (change.type === 'added') {
-      // Ignore if already rendered (possible if we added and then get server echo)
       if (rowElems.has(id)) return;
       const rowEl = createRowElement(doc);
       rowElems.set(id, rowEl);
-      // Insert in correct position based on change.newIndex
       if (change.newIndex >= list.children.length) {
         list.appendChild(rowEl);
       } else {
