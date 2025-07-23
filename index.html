@@ -18,6 +18,7 @@
 
   #list{max-width:600px;margin:0 auto;text-align:left;}
   .row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
+  .row-delete{width:24px;text-align:center;cursor:pointer;font-weight:bold;color:#ef4444;user-select:none;}
   .row-number{width:32px;text-align:right;font-weight:bold;}
   .row input{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:4px;}
   .row select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;transition:background-color .3s;}
@@ -77,6 +78,17 @@ function createRowElement(doc){
   row.className = 'row';
   row.dataset.id = id;
 
+  // delete button
+  const del = document.createElement('span');
+  del.className = 'row-delete';
+  del.textContent = '×';
+  del.title = 'Ištrinti eilutę';
+  del.addEventListener('click', () => {
+    if (confirm('Ar tikrai norite ištrinti šią eilutę?')) {
+      rowsRef.doc(id).delete();
+    }
+  });
+
   const num = document.createElement('span');
   num.className = 'row-number';
   // number is set later after we know ordering
@@ -105,6 +117,7 @@ function createRowElement(doc){
     rowsRef.doc(id).update({ status: select.value });
   });
 
+  row.appendChild(del);
   row.appendChild(num);
   row.appendChild(input);
   row.appendChild(select);
@@ -165,7 +178,7 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
   });
 });
 
-// Add new row when button clicked (fixed variable name)
+// Add new row when button clicked
 addRowBtn.addEventListener('click', () => {
   rowsRef.add({
     text: '',
