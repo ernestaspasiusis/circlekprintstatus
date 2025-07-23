@@ -45,7 +45,7 @@
 <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
 
 <script>
-// Firebase configuration – your project keys (public for web apps)
+// Firebase configuration – your project keys (public for web apps)
 const firebaseConfig = {
   apiKey: "AIzaSyAClo8SsxFrOg88vOzgKmqUjYxXduNVH_U",
   authDomain: "ckprintai.firebaseapp.com",
@@ -126,9 +126,11 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
     const id  = doc.id;
 
     if (change.type === 'added') {
+      // Ignore if already rendered (possible if we added and then get server echo)
+      if (rowElems.has(id)) return;
       const rowEl = createRowElement(doc);
       rowElems.set(id, rowEl);
-      // Insert in correct position based on index of change.newIndex
+      // Insert in correct position based on change.newIndex
       if (change.newIndex >= list.children.length) {
         list.appendChild(rowEl);
       } else {
@@ -140,7 +142,6 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
     if (change.type === 'modified') {
       const rowEl = rowElems.get(id);
       if (rowEl) {
-        // Update only display values that are different
         const input  = rowEl.querySelector('input');
         const select = rowEl.querySelector('select');
         if (document.activeElement !== input && input.value !== doc.data().text) {
@@ -164,8 +165,8 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
   });
 });
 
-// Add new row
-aaddRowBtn.addEventListener('click', () => {
+// Add new row when button clicked (fixed variable name)
+addRowBtn.addEventListener('click', () => {
   rowsRef.add({
     text: '',
     status: 'apdorojama',
