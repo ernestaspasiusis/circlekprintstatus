@@ -1,196 +1,188 @@
 <!DOCTYPE html>
 <html lang="lt">
 <head>
-<link rel="manifest" href="manifest.webmanifest" />
-<meta charset="utf-8">
-<title>Spausdinamos medžiagos būsena</title>
+<meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Spausdinamos medžiagos būsena</title>
+
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#4F46E5" />
+
 <style>
-  body{
-    font-family:system-ui,sans-serif;
-    margin:0;
-    padding:20px;
-    text-align:center;
-    background:#ffffff;
-  }
+/* ------------ tokens ------------ */
+:root{
+  --brand:#4F46E5; --brand-d:#4338CA;
+  --gray-0:#ffffff; --gray-10:#f3f4f6; --gray-50:#6b7280; --gray-90:#111827;
+}
+@media(prefers-color-scheme:dark){
+  :root{--gray-0:#1f2937;--gray-10:#374151;--gray-50:#9ca3af;--gray-90:#f9fafb;}
+}
+html{color-scheme:light dark;}
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,sans-serif;background:var(--gray-0);color:var(--gray-90);padding:16px;text-align:center}
 
-  .logo{display:block;margin:0 auto 12px;max-height:80px;object-fit:contain;}
-  .subtitle{font-size:.9rem;color:#6b7280;margin:-4px 0 4px;font-weight:400;}
-  .public-note{font-size:.8rem;color:#b91c1c;margin:0 0 16px;}
+/* Header */
+.logo{display:block;margin:0 auto 12px;max-height:80px;object-fit:contain}
+.subtitle{font-size:.9rem;color:var(--gray-50);margin:-4px 0 4px}
+.note{font-size:.8rem;color:#dc2626;margin-bottom:16px}
 
-  #list{max-width:600px;margin:0 auto;text-align:left;}
-  .row{display:flex;gap:8px;margin-bottom:6px;align-items:center;}
-  .row-delete{width:24px;text-align:center;cursor:pointer;font-weight:bold;color:#ef4444;user-select:none;}
-  .row-number{width:32px;text-align:right;font-weight:bold;}
-  .row input{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:4px;}
-  .row select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;transition:background-color .3s;}
+/* Board */
+.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start;width:100%;max-width:1400px;margin:0 auto}
+.column{background:var(--gray-10);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.col-head{font-weight:600;font-size:.9rem;margin-bottom:4px;text-align:left;color:var(--gray-50)}
+.list{display:flex;flex-direction:column;gap:8px}
 
-  /* ‑‑‑ status colours ‑‑‑ */
-  .status-pateiktas{background:#d1d5db;color:#000;}   /* gray for “Pateiktas spaudai”  */
-  .status-gaminama {background:#fde047;color:#000;}
-  .status-issiusta {background:#facc15;color:#000;}
-  .status-gauta   {background:#4ade80;color:#fff;}
+/* Card (row) */
+.card{background:var(--gray-0);border:1px solid var(--gray-50);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px;cursor:grab}
+.card.dragging{opacity:.6}
+.card-header{display:flex;align-items:center;gap:6px}
+.del{cursor:pointer;color:#ef4444;font-weight:bold;background:none;border:none;font-size:1rem;line-height:1}
+.del:hover{color:#b91c1c}
+.text{flex:1;padding:6px 8px;border:1px solid var(--gray-50);border-radius:4px;width:100%}
+.range{width:100%;margin-top:4px;--val:50}
 
-  #add-row{margin-top:12px;padding:8px 12px;border:none;background:#4F46E5;color:#fff;border-radius:4px;cursor:pointer;}
-  #add-row:hover{background:#4338CA;}
+/* Gradient track */
+.range{-webkit-appearance:none;height:6px;border-radius:3px;background:linear-gradient(to right,#4ade80 0%,#fde047 50%,#ef4444 100%)}
+.range::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;border:none;background:hsl(calc((100 - var(--val))*1.2),80%,50%);cursor:pointer}
+.range::-moz-range-track{background:none;border:none}
+.range::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:hsl(calc((100 - var(--val))*1.2),80%,50%);cursor:pointer}
+
+/* Add button */
+#add{margin:16px auto 0;padding:8px 16px;background:var(--brand);color:#fff;border:none;border-radius:4px;cursor:pointer}
+#add:hover{background:var(--brand-d)}
+/* Dark‑mode toggle (optional) */
+.toggle{position:fixed;bottom:12px;right:12px} .toggle input{display:none}
+.toggle label{background:var(--brand);color:#fff;padding:6px 8px;border-radius:4px;cursor:pointer}
 </style>
 </head>
 <body>
-
-<img class="logo" src="https://i.ibb.co/9HcFs71P/logoooo.png" alt="Circle K logo">
+<img class="logo" src="https://i.ibb.co/9HcFs71P/logoooo.png" alt="Circle K logo">
 <h1>Spausdinamos medžiagos būsena</h1>
-<p class="subtitle">Circle K Lietuva</p>
-<p class="public-note">⚠︎ Ši lentelė redaguojama viešai – visi, turintys šią nuorodą, gali keisti ar trinti duomenis.</p>
+<p class="subtitle">Circle K Lietuva</p>
+<p class="note">⚠︎ Ši lentelė redaguojama viešai – visi, turintys šią nuorodą, gali keisti ar trinti duomenis.</p>
 
-<div id="list"></div>
-<button id="add-row">Pridėti eilutę</button>
+<div id="board" class="board" aria-live="polite"></div>
+<button id="add" type="button">Pridėti eilutę</button>
 
-<!-- Firebase JS SDK (compat build) -->
-<script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
+<!-- dark‑mode toggle -->
+<div class="toggle"><input id="dm" type="checkbox"><label for="dm">🌓</label></div>
 
-<script>
-// Firebase configuration – your project keys (public for web apps)
-const firebaseConfig = {
-  apiKey: "AIzaSyAClo8SsxFrOg88vOzgKmqUjYxXduNVH_U",
-  authDomain: "ckprintai.firebaseapp.com",
-  projectId: "ckprintai",
-  storageBucket: "ckprintai.appspot.com",
-  messagingSenderId: "34677922140",
-  appId: "1:34677922140:web:bac80b67c3cbfe71ce0999",
-  measurementId: "G-TZVE0S0ELS"
-};
+<!-- Firebase (modular SDK) -->
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';
+import {getFirestore,collection,doc,addDoc,updateDoc,deleteDoc,onSnapshot,query,orderBy,writeBatch,serverTimestamp,enableIndexedDbPersistence} from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js';
 
-// Initialise Firebase (compat style)
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const rowsRef = db.collection('rows');
+/* --- Firebase init --- */
+const cfg={ apiKey:"AIzaSyAClo8SsxFrOg88vOzgKmqUjYxXduNVH_U",authDomain:"ckprintai.firebaseapp.com",projectId:"ckprintai",storageBucket:"ckprintai.appspot.com",messagingSenderId:"34677922140",appId:"1:34677922140:web:bac80b67c3cbfe71ce0999"};
+const app=initializeApp(cfg); const db=getFirestore(app); enableIndexedDbPersistence(db).catch(()=>{});
+const rowsRef=collection(db,'rows');
 
-const list = document.getElementById('list');
-const addRowBtn = document.getElementById('add-row');
-const rowElems = new Map(); // docId -> DOM element
+/* --- Elements --- */
+const board=document.getElementById('board');
+const addBtn=document.getElementById('add');
+const cols=['pateiktas','gaminama','issiusta','gauta'];
+const colNames={pateiktas:'Pateiktas spaudai',gaminama:'Gaminama',issiusta:'Išsiųsta',gauta:'Gauta'};
+const colEls={};
 
-function updateColor(sel){
-  sel.className = '';
-  sel.classList.add('status-' + sel.value);
+/* Build columns */
+cols.forEach(s=>{
+  const col=document.createElement('div'); col.className='column'; col.dataset.status=s;
+  col.innerHTML=`<div class="col-head">${colNames[s]}</div><div class="list" data-status="${s}"></div>`;
+  board.appendChild(col); colEls[s]=col.querySelector('.list');
+});
+
+/* Util */
+const $=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e};
+
+/* Card factory */
+function makeCard(docSnap){
+  const d=docSnap.data(), id=docSnap.id;
+  const card=$('div','card'); card.draggable=true; card.dataset.id=id;
+  const header=$('div','card-header');
+  const del=$('button','del'); del.textContent='×';
+  const txt=$('input','text'); txt.value=d.text||''; txt.placeholder='Įveskite tekstą…';
+  const rng=$('input','range range'); rng.type='range'; rng.min=0; rng.max=100; rng.value=d.prio??50;
+
+  /* show colour on thumb */
+  const setVal=()=>{rng.style.setProperty('--val',rng.value)};
+  setVal();
+
+  /* events */
+  del.onclick=()=>confirm('Trinti?')&&deleteDoc(doc(rowsRef,id));
+  txt.onblur=()=>updateDoc(doc(rowsRef,id),{text:txt.value});
+  rng.oninput=setVal;
+  rng.onchange=()=>updateDoc(doc(rowsRef,id),{prio:+rng.value});
+
+  header.append(del,txt);
+  card.append(header,rng);
+  return card;
 }
 
-function createRowElement(doc){
-  const data = doc.data();
-  const id   = doc.id;
-  const row  = document.createElement('div');
-  row.className = 'row';
-  row.dataset.id = id;
+/* Drag & drop */
+let dragEl=null;
+board.addEventListener('dragstart',e=>{
+  if(!e.target.classList.contains('card'))return;
+  dragEl=e.target; dragEl.classList.add('dragging'); e.dataTransfer.effectAllowed='move';
+});
+board.addEventListener('dragend',()=>{
+  if(dragEl)dragEl.classList.remove('dragging'); dragEl=null;
+});
+board.addEventListener('dragover',e=>{
+  e.preventDefault();
+  const list=e.target.closest('.list'); if(!list)return;
+  const after=[...list.children].find(c=>{
+    const box=c.getBoundingClientRect();
+    return e.clientY<box.top+box.height/2;
+  });
+  list.insertBefore(dragEl,after||null);
+});
+board.addEventListener('drop',async e=>{
+  const list=e.target.closest('.list'); if(!list)return;
+  const status=list.dataset.status;
+  const id=dragEl.dataset.id;
+  /* write order inside this column */
+  const batch=writeBatch(db);
+  [...list.children].forEach((c,i)=>batch.update(doc(rowsRef,c.dataset.id),{order:i,status:list.dataset.status}));
+  await batch.commit();
+});
 
-  // delete button
-  const del = document.createElement('span');
-  del.className = 'row-delete';
-  del.textContent = '×';
-  del.title = 'Ištrinti eilutę';
-  del.addEventListener('click', () => {
-    if (confirm('Ar tikrai norite ištrinti šią eilutę?')) {
-      rowsRef.doc(id).delete();
+/* Realtime listener */
+onSnapshot(query(rowsRef,orderBy('order')),snap=>{
+  snap.docChanges().forEach(ch=>{
+    const id=ch.doc.id, data=ch.doc.data();
+    if(ch.type==='added'){
+      const card=makeCard(ch.doc);
+      colEls[data.status||'pateiktas'].appendChild(card);
     }
-  });
-
-  const num = document.createElement('span');
-  num.className = 'row-number';
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = data.text || '';
-  input.placeholder = 'Įveskite tekstą...';
-  input.addEventListener('blur', () => {
-    if (input.value !== data.text) {
-      rowsRef.doc(id).update({ text: input.value });
-    }
-  });
-
-  const select = document.createElement('select');
-  select.innerHTML =
-    '<option value="pateiktas">Pateiktas spaudai</option>'+
-    '<option value="gaminama">Gaminama</option>'+
-    '<option value="issiusta">Išsiųsta</option>'+
-    '<option value="gauta">Gauta</option>';
-  select.value = data.status || 'pateiktas';
-  updateColor(select);
-  select.addEventListener('change', () => {
-    updateColor(select);
-    rowsRef.doc(id).update({ status: select.value });
-  });
-
-  row.appendChild(del);
-  row.appendChild(num);
-  row.appendChild(input);
-  row.appendChild(select);
-
-  return row;
-}
-
-function renumberRows(){
-  Array.from(list.children).forEach((rowEl, idx) => {
-    const span = rowEl.querySelector('.row-number');
-    if (span) span.textContent = idx + 1;
-  });
-}
-
-// Real‑time listener with granular updates to keep input focus intact
-rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
-  snapshot.docChanges().forEach(change => {
-    const doc = change.doc;
-    const id  = doc.id;
-
-    if (change.type === 'added') {
-      if (rowElems.has(id)) return;
-      const rowEl = createRowElement(doc);
-      rowElems.set(id, rowEl);
-      if (change.newIndex >= list.children.length) {
-        list.appendChild(rowEl);
-      } else {
-        list.insertBefore(rowEl, list.children[change.newIndex]);
-      }
-      renumberRows();
-    }
-
-    if (change.type === 'modified') {
-      const rowEl = rowElems.get(id);
-      if (rowEl) {
-        const input  = rowEl.querySelector('input');
-        const select = rowEl.querySelector('select');
-        if (document.activeElement !== input && input.value !== doc.data().text) {
-          input.value = doc.data().text || '';
-        }
-        if (select.value !== doc.data().status) {
-          select.value = doc.data().status || 'pateiktas';
-          updateColor(select);
+    if(ch.type==='modified'){
+      const card=document.querySelector(`.card[data-id="${id}"]`);
+      if(card){
+        const txt=card.querySelector('.text'); const rng=card.querySelector('.range');
+        if(document.activeElement!==txt) txt.value=data.text||'';
+        if(rng.value!=data.prio){rng.value=data.prio??50;rng.style.setProperty('--val',rng.value);}
+        if(card.parentElement.dataset.status!==data.status){
+          colEls[data.status||'pateiktas'].appendChild(card);
         }
       }
     }
-
-    if (change.type === 'removed') {
-      const rowEl = rowElems.get(id);
-      if (rowEl) {
-        rowEl.remove();
-        rowElems.delete(id);
-        renumberRows();
-      }
+    if(ch.type==='removed'){
+      const card=document.querySelector(`.card[data-id="${id}"]`); if(card)card.remove();
     }
   });
 });
 
-// Add new row when button clicked
-addRowBtn.addEventListener('click', () => {
-  rowsRef.add({
-    text: '',
-    status: 'pateiktas',
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-});
+/* Add new */
+addBtn.onclick=()=>addDoc(rowsRef,{text:'',prio:50,status:'pateiktas',order:Date.now(),createdAt:serverTimestamp()});
+
+/* Dark‑mode toggle */
+const dm=document.getElementById('dm');
+dm.checked=window.matchMedia('(prefers-color-scheme:dark)').matches;
+dm.onchange=()=>document.documentElement.style.colorScheme=dm.checked?'dark':'light';
 </script>
+
+<!-- service worker -->
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
 </script>
 </body>
 </html>
