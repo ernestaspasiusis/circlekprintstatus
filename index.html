@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="lt">
 <head>
+<link rel="manifest" href="manifest.webmanifest" />
 <meta charset="utf-8">
 <title>Spausdinamos medžiagos būsena</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -185,6 +186,11 @@ addRowBtn.addEventListener('click', () => {
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 });
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
 </script>
 </body>
 </html>
