@@ -7,7 +7,7 @@
 
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
-/* ---------- basic look (original list) ---------- */
+/* ---------- basic look ---------- */
 body{
   font-family:system-ui,sans-serif;
   margin:0;padding:20px;text-align:center;
@@ -17,29 +17,33 @@ body{
 .subtitle{font-size:.9rem;color:#6b7280;margin:-4px 0 4px;font-weight:400}
 .public-note{font-size:.8rem;color:#b91c1c;margin:0 0 16px}
 
-/* ---------- list container with gradient bar ---------- */
-#list-wrapper{position:relative;max-width:600px;margin:0 auto;text-align:left}
+/* ---------- list + gradient bar ---------- */
+#list-wrapper{position:relative;max-width:900px;margin:0 auto;text-align:left}
 #list-wrapper::before{
-  content:"";
-  position:absolute;left:0;top:0;bottom:0;width:6px;
-  border-radius:3px;
+  content:"";position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:3px;
   background:linear-gradient(to bottom,#4ade80 0%,#fde047 50%,#ef4444 100%);
 }
-#list{padding-left:14px} /* space so rows don’t sit on the bar */
+#list{padding-left:14px}
 
 .row{
   display:flex;gap:8px;margin-bottom:6px;align-items:center;
   background:#fff;border:1px solid #e5e7eb;border-radius:4px;
-  padding:4px 4px 4px 0;
-  cursor:grab;
+  padding:4px 4px 4px 0;cursor:grab
 }
 .row.dragging{opacity:.5}
 
 .row-delete{width:24px;text-align:center;cursor:pointer;font-weight:bold;color:#ef4444;user-select:none}
 .row-delete:hover{color:#b91c1c}
 .row-number{width:32px;text-align:right;font-weight:bold}
-.row input{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:4px}
-.row select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;transition:background-color .3s}
+
+.row input[type="text"], .row select, .row textarea{
+  padding:6px 8px;border:1px solid #ccc;border-radius:4px
+}
+.row input[type="text"]{flex:1}
+.row select{flex:0 0 170px}
+.row textarea{
+  flex:2;min-height:34px;resize:vertical;font-family:inherit
+}
 
 .status-pateiktas{background:#d1d5db;color:#000}
 .status-gaminama {background:#fde047;color:#000}
@@ -67,7 +71,7 @@ body{
 <script src="https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore-compat.js"></script>
 
 <script>
-// --- Firebase init (unchanged) ---
+// --- Firebase init ---
 firebase.initializeApp({
   apiKey:"AIzaSyAClo8SsxFrOg88vOzgKmqUjYxXduNVH_U",
   authDomain:"ckprintai.firebaseapp.com",
@@ -85,14 +89,13 @@ const addBtn=document.getElementById('add-row');
 const rowEls=new Map(); // id -> element
 
 function updateColor(sel){
-  sel.className='';
-  sel.classList.add('status-'+sel.value);
+  sel.className=''; sel.classList.add('status-'+sel.value);
 }
 function renumber(){
   [...list.children].forEach((r,i)=>r.querySelector('.row-number').textContent=i+1);
 }
 
-// --- Build one row element ---
+// --- Build one row ---
 function buildRow(doc){
   const d=doc.data(), id=doc.id;
   const row=document.createElement('div');row.className='row';row.dataset.id=id;row.draggable=true;
@@ -102,29 +105,33 @@ function buildRow(doc){
 
   const num=document.createElement('span');num.className='row-number';
 
-  const inp=document.createElement('input');inp.value=d.text||'';inp.placeholder='Įveskite tekstą…';
-  inp.onblur=()=>rowsRef.doc(id).update({text:inp.value});
+  const task=document.createElement('input');task.type='text';
+  task.value=d.text||'';task.placeholder='Įveskite tekstą…';
+  task.onblur=()=>rowsRef.doc(id).update({text:task.value});
 
-  const sel=document.createElement('select');
-  sel.innerHTML=`<option value="pateiktas">Pateiktas spaudai</option>
-                 <option value="gaminama">Gaminama</option>
-                 <option value="issiusta">Išsiųsta</option>
-                 <option value="gauta">Gauta</option>`;
-  sel.value=d.status||'pateiktas';updateColor(sel);
-  sel.onchange=()=>{updateColor(sel);rowsRef.doc(id).update({status:sel.value})};
+  const status=document.createElement('select');
+  status.innerHTML=`<option value="pateiktas">Pateiktas spaudai</option>
+                    <option value="gaminama">Gaminama</option>
+                    <option value="issiusta">Išsiųsta</option>
+                    <option value="gauta">Gauta</option>`;
+  status.value=d.status||'pateiktas';updateColor(status);
+  status.onchange=()=>{updateColor(status);rowsRef.doc(id).update({status:status.value})};
 
-  row.append(del,num,inp,sel);return row;
+  const note=document.createElement('textarea');
+  note.placeholder='Komentaras…';note.value=d.comment||'';
+  note.onblur=()=>rowsRef.doc(id).update({comment:note.value});
+
+  row.append(del,num,task,status,note);return row;
 }
 
-// --- DnD helpers ---
+// --- Drag‑and‑drop ordering ---
 let dragEl=null;
 list.addEventListener('dragstart',e=>{
   if(!e.target.classList.contains('row'))return;
   dragEl=e.target;dragEl.classList.add('dragging');
 });
 list.addEventListener('dragend',()=>{
-  if(dragEl)dragEl.classList.remove('dragging');
-  dragEl=null;saveOrder();
+  if(dragEl)dragEl.classList.remove('dragging');dragEl=null;saveOrder();
 });
 list.addEventListener('dragover',e=>{
   e.preventDefault();
@@ -132,18 +139,15 @@ list.addEventListener('dragover',e=>{
     const box=c.getBoundingClientRect();
     return e.clientY<box.top+box.height/2;
   });
-  if(dragEl && after!==dragEl) list.insertBefore(dragEl,after||null);
+  if(dragEl&&after!==dragEl)list.insertBefore(dragEl,after||null);
 });
-
 function saveOrder(){
   const batch=db.batch();
-  [...list.children].forEach((row,i)=>{
-    batch.update(rowsRef.doc(row.dataset.id),{order:i});
-  });
+  [...list.children].forEach((row,i)=>batch.update(rowsRef.doc(row.dataset.id),{order:i}));
   batch.commit().then(renumber);
 }
 
-// --- Firestore realtime listener ---
+// --- Firestore listener ---
 rowsRef.orderBy('order').onSnapshot(snap=>{
   snap.docChanges().forEach(change=>{
     const id=change.doc.id;
@@ -153,29 +157,32 @@ rowsRef.orderBy('order').onSnapshot(snap=>{
       list.insertBefore(row,list.children[change.newIndex]||null);
     }
     if(change.type==='modified'){
-      const row=rowEls.get(id);
-      if(!row)return;
-      const inp=row.querySelector('input'), sel=row.querySelector('select');
-      if(document.activeElement!==inp) inp.value=change.doc.data().text||'';
-      if(sel.value!==change.doc.data().status){
-        sel.value=change.doc.data().status||'pateiktas';updateColor(sel);
+      const row=rowEls.get(id);if(!row)return;
+      const task=row.querySelector('input'),status=row.querySelector('select'),note=row.querySelector('textarea');
+      if(document.activeElement!==task) task.value=change.doc.data().text||'';
+      if(document.activeElement!==note) note.value=change.doc.data().comment||'';
+      if(status.value!==change.doc.data().status){
+        status.value=change.doc.data().status||'pateiktas';updateColor(status);
       }
-      if(change.newIndex!==undefined && list.children[change.newIndex]!==row){
+      if(change.newIndex!==undefined&&list.children[change.newIndex]!==row){
         list.insertBefore(row,list.children[change.newIndex]||null);
       }
     }
     if(change.type==='removed'){
-      const row=rowEls.get(id); if(row){row.remove();rowEls.delete(id);}
+      const row=rowEls.get(id);if(row){row.remove();rowEls.delete(id);}
     }
   });
   renumber();
 });
 
-// --- Add new row ---
-addBtn.onclick=()=>rowsRef.add({text:'',status:'pateiktas',order:Date.now(),createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+// --- Add new ---
+addBtn.onclick=()=>rowsRef.add({
+  text:'',comment:'',status:'pateiktas',
+  order:Date.now(),
+  createdAt:firebase.firestore.FieldValue.serverTimestamp()
+});
 </script>
 
-<!-- service worker remains -->
 <script>
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}
 </script>
