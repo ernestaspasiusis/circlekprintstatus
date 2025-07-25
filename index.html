@@ -7,7 +7,7 @@
 
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
-/* ---------- basic look ---------- */
+/* ---------- base look ---------- */
 body{
   font-family:system-ui,sans-serif;
   margin:0;padding:20px;text-align:center;
@@ -17,7 +17,7 @@ body{
 .subtitle{font-size:.9rem;color:#6b7280;margin:-4px 0 4px;font-weight:400}
 .public-note{font-size:.8rem;color:#b91c1c;margin:0 0 16px}
 
-/* ---------- list + gradient bar ---------- */
+/* ---------- container + gradient bar ---------- */
 #list-wrapper{position:relative;max-width:900px;margin:0 auto;text-align:left}
 #list-wrapper::before{
   content:"";position:absolute;left:0;top:0;bottom:0;width:6px;border-radius:3px;
@@ -25,6 +25,7 @@ body{
 }
 #list{padding-left:14px}
 
+/* ---------- row ---------- */
 .row{
   display:flex;gap:8px;margin-bottom:6px;align-items:center;
   background:#fff;border:1px solid #e5e7eb;border-radius:4px;
@@ -45,6 +46,7 @@ body{
   flex:2;min-height:34px;resize:vertical;font-family:inherit
 }
 
+/* status colours */
 .status-pateiktas{background:#d1d5db;color:#000}
 .status-gaminama {background:#fde047;color:#000}
 .status-issiusta {background:#facc15;color:#000}
@@ -52,6 +54,15 @@ body{
 
 #add-row{margin-top:12px;padding:8px 12px;border:none;background:#4F46E5;color:#fff;border-radius:4px;cursor:pointer}
 #add-row:hover{background:#4338CA}
+
+/* ---------- mobile layout (≤599 px) ---------- */
+@media (max-width: 599px){
+  .row{flex-wrap:wrap;padding-right:4px}
+  .row-delete,.row-number{flex:0 0 24px}
+  .row input[type="text"]{flex:1 1 calc(100% - 48px)}
+  .row select,.row textarea{flex:1 1 100%}
+  .row textarea{margin-top:4px}
+}
 </style>
 </head>
 <body>
@@ -86,52 +97,57 @@ const rowsRef=db.collection('rows');
 // --- DOM refs ---
 const list=document.getElementById('list');
 const addBtn=document.getElementById('add-row');
-const rowEls=new Map(); // id -> element
+const rowEls=new Map();
 
-function updateColor(sel){
-  sel.className=''; sel.classList.add('status-'+sel.value);
-}
-function renumber(){
-  [...list.children].forEach((r,i)=>r.querySelector('.row-number').textContent=i+1);
-}
+/* add colour only for real status */
+const updateColor=sel=>{
+  sel.className='';
+  if(sel.value) sel.classList.add('status-'+sel.value);
+};
+const renumber=()=>[...list.children].forEach((r,i)=>r.querySelector('.row-number').textContent=i+1);
 
-// --- Build one row ---
+// --- Build one row element ---
 function buildRow(doc){
   const d=doc.data(), id=doc.id;
-  const row=document.createElement('div');row.className='row';row.dataset.id=id;row.draggable=true;
+  const row=document.createElement('div');
+  row.className='row'; row.dataset.id=id; row.draggable=true;
 
-  const del=document.createElement('span');del.className='row-delete';del.textContent='×';
+  const del=document.createElement('span');
+  del.className='row-delete'; del.textContent='×';
   del.onclick=()=>confirm('Trinti eilutę?')&&rowsRef.doc(id).delete();
 
-  const num=document.createElement('span');num.className='row-number';
+  const num=document.createElement('span'); num.className='row-number';
 
-  const task=document.createElement('input');task.type='text';
-  task.value=d.text||'';task.placeholder='Įveskite tekstą…';
+  const task=document.createElement('input');
+  task.type='text'; task.value=d.text||''; task.placeholder='Įveskite tekstą…';
   task.onblur=()=>rowsRef.doc(id).update({text:task.value});
 
   const status=document.createElement('select');
-  status.innerHTML=`<option value="pateiktas">Pateiktas spaudai</option>
+  status.innerHTML=`<option value="">Pasirinkite būseną</option>
+                    <option value="pateiktas">Pateiktas spaudai</option>
                     <option value="gaminama">Gaminama</option>
                     <option value="issiusta">Išsiųsta</option>
                     <option value="gauta">Gauta</option>`;
-  status.value=d.status||'pateiktas';updateColor(status);
-  status.onchange=()=>{updateColor(status);rowsRef.doc(id).update({status:status.value})};
+  status.value=d.status||''; updateColor(status);
+  status.onchange=()=>{updateColor(status); rowsRef.doc(id).update({status:status.value});};
 
   const note=document.createElement('textarea');
-  note.placeholder='Komentaras…';note.value=d.comment||'';
+  note.placeholder='Komentaras…'; note.value=d.comment||'';
   note.onblur=()=>rowsRef.doc(id).update({comment:note.value});
 
-  row.append(del,num,task,status,note);return row;
+  row.append(del,num,task,status,note);
+  return row;
 }
 
-// --- Drag‑and‑drop ordering ---
+/* ---- drag‑and‑drop ordering ---- */
 let dragEl=null;
 list.addEventListener('dragstart',e=>{
   if(!e.target.classList.contains('row'))return;
-  dragEl=e.target;dragEl.classList.add('dragging');
+  dragEl=e.target; dragEl.classList.add('dragging');
 });
 list.addEventListener('dragend',()=>{
-  if(dragEl)dragEl.classList.remove('dragging');dragEl=null;saveOrder();
+  if(dragEl)dragEl.classList.remove('dragging');
+  dragEl=null; saveOrder();
 });
 list.addEventListener('dragover',e=>{
   e.preventDefault();
@@ -139,15 +155,15 @@ list.addEventListener('dragover',e=>{
     const box=c.getBoundingClientRect();
     return e.clientY<box.top+box.height/2;
   });
-  if(dragEl&&after!==dragEl)list.insertBefore(dragEl,after||null);
+  if(dragEl && after!==dragEl) list.insertBefore(dragEl,after||null);
 });
-function saveOrder(){
+const saveOrder=()=>{
   const batch=db.batch();
   [...list.children].forEach((row,i)=>batch.update(rowsRef.doc(row.dataset.id),{order:i}));
   batch.commit().then(renumber);
-}
+};
 
-// --- Firestore listener ---
+/* ---- Firestore realtime listener ---- */
 rowsRef.orderBy('order').onSnapshot(snap=>{
   snap.docChanges().forEach(change=>{
     const id=change.doc.id;
@@ -157,27 +173,29 @@ rowsRef.orderBy('order').onSnapshot(snap=>{
       list.insertBefore(row,list.children[change.newIndex]||null);
     }
     if(change.type==='modified'){
-      const row=rowEls.get(id);if(!row)return;
-      const task=row.querySelector('input'),status=row.querySelector('select'),note=row.querySelector('textarea');
+      const row=rowEls.get(id); if(!row)return;
+      const task=row.querySelector('input');
+      const status=row.querySelector('select');
+      const note=row.querySelector('textarea');
       if(document.activeElement!==task) task.value=change.doc.data().text||'';
       if(document.activeElement!==note) note.value=change.doc.data().comment||'';
       if(status.value!==change.doc.data().status){
-        status.value=change.doc.data().status||'pateiktas';updateColor(status);
+        status.value=change.doc.data().status||''; updateColor(status);
       }
-      if(change.newIndex!==undefined&&list.children[change.newIndex]!==row){
+      if(change.newIndex!==undefined && list.children[change.newIndex]!==row){
         list.insertBefore(row,list.children[change.newIndex]||null);
       }
     }
     if(change.type==='removed'){
-      const row=rowEls.get(id);if(row){row.remove();rowEls.delete(id);}
+      const row=rowEls.get(id); if(row){row.remove(); rowEls.delete(id);}
     }
   });
   renumber();
 });
 
-// --- Add new ---
+/* ---- Add new row ---- */
 addBtn.onclick=()=>rowsRef.add({
-  text:'',comment:'',status:'pateiktas',
+  text:'', comment:'', status:'',          // default to blank status
   order:Date.now(),
   createdAt:firebase.firestore.FieldValue.serverTimestamp()
 });
