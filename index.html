@@ -24,7 +24,8 @@
   .row input{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:4px;}
   .row select{padding:6px 8px;border:1px solid #ccc;border-radius:4px;transition:background-color .3s;}
 
-  .status-apdorojama{background:#fb923c;color:#000;}
+  /* ‑‑‑ status colours ‑‑‑ */
+  .status-pateiktas{background:#d1d5db;color:#000;}   /* gray for “Pateiktas spaudai”  */
   .status-gaminama {background:#fde047;color:#000;}
   .status-issiusta {background:#facc15;color:#000;}
   .status-gauta   {background:#4ade80;color:#fff;}
@@ -38,7 +39,7 @@
 <img class="logo" src="https://i.ibb.co/9HcFs71P/logoooo.png" alt="Circle K logo">
 <h1>Spausdinamos medžiagos būsena</h1>
 <p class="subtitle">Circle K Lietuva</p>
-<p class="public-note">⚠︎ Ši lentelė redaguojama viešai – visi, turintys šią nuorodą, gali keisti ar trinti duomenis.</p>
+<p class="public-note">⚠︎ Ši lentelė redaguojama viešai – visi, turintys šią nuorodą, gali keisti ar trinti duomenis.</p>
 
 <div id="list"></div>
 <button id="add-row">Pridėti eilutę</button>
@@ -106,11 +107,11 @@ function createRowElement(doc){
 
   const select = document.createElement('select');
   select.innerHTML =
-    '<option value="apdorojama">Apdorojama</option>'+
+    '<option value="pateiktas">Pateiktas spaudai</option>'+
     '<option value="gaminama">Gaminama</option>'+
     '<option value="issiusta">Išsiųsta</option>'+
     '<option value="gauta">Gauta</option>';
-  select.value = data.status || 'apdorojama';
+  select.value = data.status || 'pateiktas';
   updateColor(select);
   select.addEventListener('change', () => {
     updateColor(select);
@@ -159,7 +160,7 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
           input.value = doc.data().text || '';
         }
         if (select.value !== doc.data().status) {
-          select.value = doc.data().status || 'apdorojama';
+          select.value = doc.data().status || 'pateiktas';
           updateColor(select);
         }
       }
@@ -180,7 +181,7 @@ rowsRef.orderBy('createdAt').onSnapshot(snapshot => {
 addRowBtn.addEventListener('click', () => {
   rowsRef.add({
     text: '',
-    status: 'apdorojama',
+    status: 'pateiktas',
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 });
